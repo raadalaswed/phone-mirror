@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phone Mirror — عرض شاشة هاتفك</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="/socket.io/socket.io.js"></script>
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #12121a;
+  --surface2: #1a1a26;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --accent: #6c63ff;
+  --accent2: #a78bfa;
+  --accent-glow: rgba(108,99,255,0.25);
+  --green: #34d399;
+  --green-bg: rgba(52,211,153,0.1);
+  --red: #f87171;
+  --red-bg: rgba(248,113,113,0.1);
+  --amber: #fbbf24;
+  --amber-bg: rgba(251,191,36,0.1);
+  --text: #f0f0f8;
+  --text2: #9090b0;
+  --text3: #5a5a7a;
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Cairo', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Background grid ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(108,99,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(108,99,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Glow orbs ── */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
+.orb-1 { width: 400px; height: 400px; background: rgba(108,99,255,0.12); top: -100px; right: -100px; }
+.orb-2 { width: 300px; height: 300px; background: rgba(52,211,153,0.07); bottom: 100px; left: -100px; }
+
+/* ── Layout ── */
+.wrapper {
+  position: relative;
+  z-index: 1;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+/* ── Header ── */
+.header {
+  text-align: center;
+  margin-bottom: 3rem;
+  animation: fadeUp 0.6s ease both;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1.5rem;
+}
+
+.logo-icon {
+  width: 40px; height: 40px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+
+.logo-text {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, #fff 0%, var(--accent2) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header h1 {
+  font-size: clamp(1.8rem, 5vw, 2.8rem);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -1px;
+  margin-bottom: 0.75rem;
+}
+
+.header h1 span {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header p {
+  font-size: 1rem;
+  color: var(--text2);
+  font-weight: 300;
+  max-width: 450px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+
+/* ── Pills (no install needed) ── */
+.pills {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 1.25rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 50px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border2);
+  color: var(--text2);
+  font-weight: 500;
+}
+
+.pill .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+/* ── Mode Selector ── */
+.mode-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 1.5rem;
+  animation: fadeUp 0.6s 0.1s ease both;
+}
+
+.mode-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.mode-card:hover { border-color: var(--border2); background: var(--surface2); }
+
+.mode-card.active {
+  border-color: var(--accent);
+  background: rgba(108,99,255,0.08);
+  box-shadow: 0 0 0 1px rgba(108,99,255,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.mode-icon { font-size: 28px; margin-bottom: 8px; }
+.mode-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.mode-desc { font-size: 12px; color: var(--text2); font-weight: 300; }
+
+/* ── Panel ── */
+.panel { display: none; animation: fadeUp 0.3s ease both; }
+.panel.active { display: block; }
+
+/* ── Card ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.card-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 12px;
+}
+
+/* ── Room Input ── */
+.room-box {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.room-display {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 4px;
+  color: var(--accent2);
+  text-align: center;
+}
+
+input[type="text"] {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 4px;
+  color: var(--accent2);
+  text-align: center;
+  outline: none;
+  transition: border 0.2s;
+}
+
+input[type="text"]:focus { border-color: var(--accent); }
+input[type="text"]::placeholder { color: var(--text3); letter-spacing: 2px; font-size: 13px; }
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  font-family: 'Cairo', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 4px 20px rgba(108,99,255,0.3);
+}
+.btn-primary:hover { background: #7c74ff; box-shadow: 0 4px 24px rgba(108,99,255,0.45); transform: translateY(-1px); }
+.btn-primary:active { transform: scale(0.98); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text2);
+  border-color: var(--border2);
+}
+.btn-ghost:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+
+.btn-danger {
+  background: var(--red-bg);
+  color: var(--red);
+  border-color: rgba(248,113,113,0.3);
+}
+.btn-danger:hover { background: rgba(248,113,113,0.18); }
+
+.btn-full { width: 100%; padding: 13px; font-size: 15px; }
+
+/* ── Status Badge ── */
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  margin-top: 12px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status.idle { background: rgba(255,255,255,0.04); color: var(--text2); }
+.status.idle .status-dot { background: var(--text3); }
+.status.info { background: rgba(108,99,255,0.1); color: var(--accent2); }
+.status.info .status-dot { background: var(--accent); animation: pulse 1.5s infinite; }
+.status.success { background: var(--green-bg); color: var(--green); }
+.status.success .status-dot { background: var(--green); animation: pulse 2s infinite; }
+.status.error { background: var(--red-bg); color: var(--red); }
+.status.error .status-dot { background: var(--red); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ── Source Toggle ── */
+.source-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 1rem;
+}
+
+.source-option {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text2);
+  transition: all 0.15s;
+}
+.source-option:hover { border-color: var(--border2); }
+.source-option.active {
+  background: rgba(108,99,255,0.1);
+  border-color: var(--accent);
+  color: var(--accent2);
+}
+.source-option .src-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+
+/* ── Video ── */
+.video-wrapper {
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--border);
+  margin-top: 1rem;
+  display: none;
+}
+
+.video-wrapper video {
+  width: 100%;
+  max-height: 400px;
+  display: block;
+  object-fit: contain;
+}
+
+.video-label {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #fff;
+  backdrop-filter: blur(8px);
+}
+
+.video-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(0,0,0,0.7);
+}
+.video-overlay p { font-size: 14px; color: var(--text2); }
+
+/* ── Steps (how it works) ── */
+.how-grid { display: flex; flex-direction: column; gap: 1px; }
+
+.how-step {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.how-step:last-child { border-bottom: none; }
+
+.how-num {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--accent-glow);
+  border: 1px solid rgba(108,99,255,0.4);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent2);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.how-content h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.how-content p { font-size: 13px; color: var(--text2); font-weight: 300; line-height: 1.6; }
+
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  background: rgba(108,99,255,0.12);
+  color: var(--accent2);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 500px) {
+  .mode-selector { grid-template-columns: 1fr 1fr; }
+  .room-box { flex-wrap: wrap; }
+  .room-display, input[type="text"] { font-size: 15px; letter-spacing: 3px; }
+}
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="wrapper">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">📡</div>
+      <div class="logo-text">Phone Mirror</div>
+    </div>
+    <h1>عرض شاشة هاتفك<br>على <span>أي متصفح</span></h1>
+    <p>بدون USB · بدون برامج · بدون تثبيت · فقط افتح الموقع وابدأ</p>
+    <div class="pills">
+      <span class="pill"><span class="dot"></span> بدون تثبيت</span>
+      <span class="pill"><span class="dot"></span> مشفر بالكامل</span>
+      <span class="pill"><span class="dot"></span> WiFi / إنترنت</span>
+      <span class="pill"><span class="dot"></span> Android & iOS</span>
+    </div>
+  </div>
+
+  <!-- Mode Selector -->
+  <div class="mode-selector">
+    <div class="mode-card active" id="mode-phone" onclick="setMode('phone')">
+      <div class="mode-icon">📱</div>
+      <div class="mode-title">أنا صاحب الهاتف</div>
+      <div class="mode-desc">أريد مشاركة شاشتي</div>
+    </div>
+    <div class="mode-card" id="mode-pc" onclick="setMode('pc')">
+      <div class="mode-icon">🖥️</div>
+      <div class="mode-title">أنا المشاهد</div>
+      <div class="mode-desc">أريد رؤية شاشة الهاتف</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ PHONE PANEL ═══════════════ -->
+  <div class="panel active" id="panel-phone">
+
+    <div class="card">
+      <div class="card-label">رمز الغرفة</div>
+      <div class="room-box">
+        <div class="room-display" id="room-code">——————</div>
+        <button class="btn btn-ghost" onclick="genRoom()" title="توليد رمز جديد">🔄</button>
+        <button class="btn btn-ghost" onclick="copyRoom()" title="نسخ الرمز">نسخ</button>
+      </div>
+      <div class="status idle" id="phone-status">
+        <div class="status-dot"></div>
+        <span>اضغط "توليد" للحصول على رمز الغرفة</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">ماذا تريد مشاركته؟</div>
+      <div class="source-toggle">
+        <div class="source-option active" id="src-screen" onclick="setSource('screen')">
+          <span class="src-icon">📺</span>
+          شاشة الهاتف
+        </div>
+        <div class="source-option" id="src-camera" onclick="setSource('camera')">
+          <span class="src-icon">📷</span>
+          الكاميرا
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full" id="phone-start-btn" onclick="phoneStart()">
+        ▶ إنشاء الغرفة وبدء البث
+      </button>
+      <button class="btn btn-danger btn-full" id="phone-stop-btn" style="display:none;" onclick="phoneStop()">
+        ⏹ إيقاف البث
+      </button>
+    </div>
+
+    <div class="video-wrapper" id="local-video-wrap">
+      <video id="local-video" autoplay muted playsinline></video>
+      <div class="video-label">معاينة محلية</div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════ PC PANEL ═══════════════ -->
+  <div class="panel" id="panel-pc">
+
+    <div class="card">
+      <div class="card-label">أدخل رمز الغرفة</div>
+      <div class="room-box">
+        <input type="text" id="pc-room-input" placeholder="A B C 1 2 3" maxlength="8"
+          oninput="this.value=this.value.toUpperCase()"
+          onkeydown="if(event.key==='Enter') pcJoin()" />
+        <button class="btn btn-primary" onclick="pcJoin()">انضمام</button>
+      </div>
+      <div class="status idle" id="pc-status">
+        <div class="status-dot"></div>
+        <span>أدخل الرمز الذي أرسله لك صاحب الهاتف</span>
+      </div>
+    </div>
+
+    <div class="video-wrapper" id="remote-video-wrap">
+      <video id="remote-video" autoplay playsinline controls></video>
+      <div class="video-label">شاشة الهاتف المباشرة</div>
+    </div>
+
+  </div>
+
+</div><!-- /wrapper -->
+
+<script>
+// ══════════════════════════════════════════════
+//   Phone Mirror — Client JS
+// ══════════════════════════════════════════════
+
+const socket = io();
+let pc = null;          // RTCPeerConnection
+let localStream = null;
+let currentMode = 'phone';
+let currentSource = 'screen';
+let currentRoomId = null;
+
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ]
+};
+
+// ── UI Helpers ─────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('active'));
+  document.getElementById('mode-' + mode).classList.add('active');
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + mode).classList.add('active');
+}
+
+function setSource(src) {
+  currentSource = src;
+  document.querySelectorAll('.source-option').forEach(o => o.classList.remove('active'));
+  document.getElementById('src-' + src).classList.add('active');
+}
+
+function setStatus(side, msg, type = 'idle') {
+  const el = document.getElementById(side + '-status');
+  el.className = 'status ' + type;
+  el.querySelector('span').textContent = msg;
+}
+
+function showVideo(id, stream) {
+  const wrap = document.getElementById(id + '-wrap');
+  const vid = document.getElementById(id);
+  wrap.style.display = 'block';
+  vid.srcObject = stream;
+}
+
+function hideVideo(id) {
+  document.getElementById(id + '-wrap').style.display = 'none';
+  document.getElementById(id).srcObject = null;
+}
+
+// ── Room Generation ────────────────────────────
+function genRoom() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let id = '';
+  for (let i = 0; i < 6; i++) id += chars[Math.floor(Math.random() * chars.length)];
+  document.getElementById('room-code').textContent = id;
+  setStatus('phone', 'اضغط "بدء البث" لتفعيل الغرفة', 'idle');
+  return id;
+}
+
+function copyRoom() {
+  const code = document.getElementById('room-code').textContent;
+  if (code === '——————') { genRoom(); return; }
+  navigator.clipboard.writeText(code).then(() => {
+    setStatus('phone', 'تم نسخ الرمز: ' + code + ' — أرسله للمشاهد', 'success');
+  });
+}
+
+// ── Phone: Start ───────────────────────────────
+async function phoneStart() {
+  let roomId = document.getElementById('room-code').textContent;
+  if (roomId === '——————') roomId = genRoom();
+  currentRoomId = roomId;
+
+  setStatus('phone', 'جاري الحصول على إذن المشاركة...', 'info');
+
+  try {
+    if (currentSource === 'screen') {
+      localStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    } else {
+      localStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: true });
+    }
+  } catch (e) {
+    const msg = e.name === 'NotAllowedError' ? 'تم رفض الإذن — اسمح للمتصفح بالوصول' : 'خطأ: ' + e.message;
+    setStatus('phone', msg, 'error');
+    return;
+  }
+
+  showVideo('local-video', localStream);
+  localStream.getTracks()[0].onended = phoneStop;
+
+  document.getElementById('phone-start-btn').style.display = 'none';
+  document.getElementById('phone-stop-btn').style.display = 'block';
+
+  socket.emit('create-room', roomId);
+  setStatus('phone', 'الغرفة جاهزة: ' + roomId + ' — في انتظار المشاهد...', 'info');
+}
+
+// ── Phone: Stop ────────────────────────────────
+function phoneStop() {
+  if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+  if (pc) { pc.close(); pc = null; }
+  hideVideo('local-video');
+  document.getElementById('phone-start-btn').style.display = 'block';
+  document.getElementById('phone-stop-btn').style.display = 'none';
+  setStatus('phone', 'تم إيقاف البث', 'idle');
+}
+
+// ── PC: Join ───────────────────────────────────
+function pcJoin() {
+  const roomId = document.getElementById('pc-room-input').value.trim().toUpperCase();
+  if (!roomId) { setStatus('pc', 'أدخل رمز الغرفة أولاً', 'error'); return; }
+  currentRoomId = roomId;
+  setStatus('pc', 'جاري الاتصال بالغرفة ' + roomId + '...', 'info');
+  socket.emit('join-room', roomId);
+}
+
+// ── WebRTC: Phone creates offer ────────────────
+socket.on('pc-joined', async () => {
+  setStatus('phone', 'المشاهد متصل! جاري إعداد البث...', 'info');
+  pc = new RTCPeerConnection(ICE_SERVERS);
+
+  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate) socket.emit('ice-candidate', { roomId: currentRoomId, candidate, to: 'pc' });
+  };
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  socket.emit('offer', { roomId: currentRoomId, offer });
+  setStatus('phone', 'البث يعمل — المشاهد يشاهد شاشتك الآن 🟢', 'success');
+});
+
+// ── WebRTC: PC receives offer ──────────────────
+socket.on('room-joined', () => {
+  setStatus('pc', 'تم الاتصال! في انتظار بث الهاتف...', 'info');
+  pc = new RTCPeerConnection(ICE_SERVERS);
+
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate) socket.emit('ice-candidate', { roomId: currentRoomId, candidate, to: 'phone' });
+  };
+
+  pc.ontrack = (event) => {
+    showVideo('remote-video', event.streams[0]);
+    setStatus('pc', 'تتلقى شاشة الهاتف مباشرة 🟢', 'success');
+  };
+});
+
+socket.on('offer', async (offer) => {
+  await pc.setRemoteDescription(new RTCSessionDescription(offer));
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  socket.emit('answer', { roomId: currentRoomId, answer });
+});
+
+socket.on('answer', async (answer) => {
+  await pc.setRemoteDescription(new RTCSessionDescription(answer));
+});
+
+socket.on('ice-candidate', async (candidate) => {
+  try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch(e) {}
+});
+
+// ── Disconnection events ───────────────────────
+socket.on('phone-left', () => {
+  setStatus('pc', 'انقطع اتصال الهاتف', 'error');
+  hideVideo('remote-video');
+  if (pc) { pc.close(); pc = null; }
+});
+
+socket.on('pc-left', () => {
+  setStatus('phone', 'غادر المشاهد — لا يزال البث نشطاً', 'info');
+});
+
+socket.on('error', (msg) => {
+  setStatus(currentMode, msg, 'error');
+});
+
+// Init
+genRoom();
+</script>
+</body>
+</html>

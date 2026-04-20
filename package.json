@@ -1,0 +1,16 @@
+{
+  "name": "phone-mirror",
+  "version": "2.0.0",
+  "description": "عرض شاشة الهاتف على المتصفح عبر WebRTC - بدون USB بدون برامج",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "socket.io": "^4.7.4"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
