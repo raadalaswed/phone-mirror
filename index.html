@@ -468,6 +468,14 @@ code {
     </div>
   </div>
 
+  <!-- Chat Link -->
+  <div style="text-align:center; margin-bottom: 1.5rem;">
+    <a href="/chat" style="display:inline-flex;align-items:center;gap:8px;padding:11px 28px;background:linear-gradient(135deg,rgba(108,99,255,0.18),rgba(167,139,250,0.12));border:1px solid rgba(108,99,255,0.45);border-radius:50px;color:#a78bfa;font-family:'Cairo',sans-serif;font-size:15px;font-weight:600;text-decoration:none;box-shadow:0 0 18px rgba(108,99,255,0.15);transition:all 0.2s;"
+      onmouseover="this.style.background='linear-gradient(135deg,rgba(108,99,255,0.28),rgba(167,139,250,0.2))';this.style.boxShadow='0 0 28px rgba(108,99,255,0.3)';this.style.transform='translateY(-1px)'"
+      onmouseout="this.style.background='linear-gradient(135deg,rgba(108,99,255,0.18),rgba(167,139,250,0.12))';this.style.boxShadow='0 0 18px rgba(108,99,255,0.15)';this.style.transform='translateY(0)'"
+    >💬 شات مباشر</a>
+  </div>
+
   <!-- Mode Selector -->
   <div class="mode-selector">
     <div class="mode-card active" id="mode-phone" onclick="setMode('phone')">
@@ -491,7 +499,6 @@ code {
         <div class="room-display" id="room-code">——————</div>
         <button class="btn btn-ghost" onclick="genRoom()" title="توليد رمز جديد">🔄</button>
         <button class="btn btn-ghost" onclick="copyRoom()" title="نسخ الرمز">نسخ</button>
-        <button class="btn btn-ghost" onclick="goToChatFromPhone()" title="الانتقال إلى الشات بنفس رمز الغرفة" style="border-color: rgba(108,99,255,0.4); color: var(--accent2);">💬</button>
       </div>
       <div class="status idle" id="phone-status">
         <div class="status-dot"></div>
@@ -537,7 +544,6 @@ code {
           oninput="this.value=this.value.toUpperCase()"
           onkeydown="if(event.key==='Enter') pcJoin()" />
         <button class="btn btn-primary" onclick="pcJoin()">انضمام</button>
-        <button class="btn btn-ghost" onclick="goToChat()" title="انتقل إلى الشات بنفس رمز الغرفة" style="border-color: rgba(108,99,255,0.4); color: var(--accent2);">💬 الشات</button>
       </div>
       <div class="status idle" id="pc-status">
         <div class="status-dot"></div>
@@ -734,26 +740,6 @@ socket.on('pc-left', () => {
 socket.on('error', (msg) => {
   setStatus(currentMode, msg, 'error');
 });
-
-// ── Chat Navigation ────────────────────────────
-function goToChat() {
-  const roomId = document.getElementById('pc-room-input').value.trim().toUpperCase();
-  if (!roomId) {
-    alert('أدخل رمز الغرفة أولاً');
-    document.getElementById('pc-room-input').focus();
-    return;
-  }
-  window.location.href = '/chat?room=' + encodeURIComponent(roomId);
-}
-
-function goToChatFromPhone() {
-  const code = document.getElementById('room-code').textContent.trim();
-  if (!code || code === '——————') {
-    alert('قم بتوليد رمز الغرفة أولاً بالضغط على 🔄');
-    return;
-  }
-  window.location.href = '/chat?room=' + encodeURIComponent(code);
-}
 
 // Init
 genRoom();
