@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Phone Mirror by Raad Alaswed — عرض شاشة هاتفك</title>
+<title>Phone Mirror — عرض شاشة هاتفك</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="/socket.io/socket.io.js"></script>
@@ -491,6 +491,7 @@ code {
         <div class="room-display" id="room-code">——————</div>
         <button class="btn btn-ghost" onclick="genRoom()" title="توليد رمز جديد">🔄</button>
         <button class="btn btn-ghost" onclick="copyRoom()" title="نسخ الرمز">نسخ</button>
+        <button class="btn btn-ghost" onclick="goToChatFromPhone()" title="الانتقال إلى الشات بنفس رمز الغرفة" style="border-color: rgba(108,99,255,0.4); color: var(--accent2);">💬</button>
       </div>
       <div class="status idle" id="phone-status">
         <div class="status-dot"></div>
@@ -536,6 +537,7 @@ code {
           oninput="this.value=this.value.toUpperCase()"
           onkeydown="if(event.key==='Enter') pcJoin()" />
         <button class="btn btn-primary" onclick="pcJoin()">انضمام</button>
+        <button class="btn btn-ghost" onclick="goToChat()" title="انتقل إلى الشات بنفس رمز الغرفة" style="border-color: rgba(108,99,255,0.4); color: var(--accent2);">💬 الشات</button>
       </div>
       <div class="status idle" id="pc-status">
         <div class="status-dot"></div>
@@ -732,6 +734,26 @@ socket.on('pc-left', () => {
 socket.on('error', (msg) => {
   setStatus(currentMode, msg, 'error');
 });
+
+// ── Chat Navigation ────────────────────────────
+function goToChat() {
+  const roomId = document.getElementById('pc-room-input').value.trim().toUpperCase();
+  if (!roomId) {
+    alert('أدخل رمز الغرفة أولاً');
+    document.getElementById('pc-room-input').focus();
+    return;
+  }
+  window.location.href = '/chat?room=' + encodeURIComponent(roomId);
+}
+
+function goToChatFromPhone() {
+  const code = document.getElementById('room-code').textContent.trim();
+  if (!code || code === '——————') {
+    alert('قم بتوليد رمز الغرفة أولاً بالضغط على 🔄');
+    return;
+  }
+  window.location.href = '/chat?room=' + encodeURIComponent(code);
+}
 
 // Init
 genRoom();
